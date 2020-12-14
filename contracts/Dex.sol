@@ -1,6 +1,8 @@
 pragma solidity 0.6.3;
+pragma experimental ABIEncoderV2;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Dex {
     struct Token {
@@ -12,7 +14,7 @@ contract Dex {
     bytes32[] public tokenList;
 
     // user => ticker => amount
-    mapping(address => mapping(bytes32 => uint256)) public tradeBalances;
+    mapping(address => mapping(bytes32 => uint256)) public traderBalances;
 
     address public admin;
 
@@ -20,7 +22,7 @@ contract Dex {
         admin = msg.sender;
     }
 
-    // Add new token to the Dex'ss token registry
+    // Registry: Add new token to the Dex's token registry
     function addToken(bytes32 ticker, address tokenAddress)
         external
         onlyAdmin()
@@ -29,7 +31,7 @@ contract Dex {
         tokenList.push(ticker);
     }
 
-    // User to deposit token into the dex
+    // Wallet: User to deposit token into the dex
     function deposit(uint256 amount, bytes32 ticker)
         external
         tokenExist(ticker)
@@ -40,17 +42,20 @@ contract Dex {
             amount
         );
 
-        tradeBalances[msg.sender][ticker] += amount;
+        traderBalances[msg.sender][ticker] += amount;
     }
 
-    // User to withdraw their token from the dex
+    // Wallet: User to withdraw their token from the dex
     function withdraw(uint256 amount, bytes32 ticker)
         external
         tokenExist(ticker)
     {
-        require(tradeBalances[msg.sender][ticker] >= amount, "balance too low");
+        require(
+            traderBalances[msg.sender][ticker] >= amount,
+            "balance too low"
+        );
 
-        tradeBalances[msg.sender][ticker] -= amount;
+        traderBalances[msg.sender][ticker] -= amount;
         IERC20(tokens[ticker].tokenAddress).transfer(msg.sender, amount);
     }
 
