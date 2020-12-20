@@ -25,7 +25,9 @@ contract Dex {
     }
 
     // Registry:
+    // ticker => Token
     mapping(bytes32 => Token) public tokens;
+    // ticker[]
     bytes32[] public tokenList;
 
     // Wallet: user => ticker => amount
@@ -34,8 +36,20 @@ contract Dex {
     // ticker => Side => Order[] (sorted: BUY DESC, SELL ASC)
     mapping(bytes32 => mapping(uint256 => Order[])) public orderBook;
     uint256 public nextOrderId;
+    uint256 public nextTradeId;
 
     address public admin;
+
+    event NewTrade(
+        uint256 tradeId,
+        uint256 orderId,
+        bytes32 indexed ticker,
+        address indexed trader1,
+        address indexed trader2,
+        uint256 amount,
+        uint256 price,
+        uint256 date
+    );
 
     constructor() public {
         admin = msg.sender;
@@ -48,6 +62,18 @@ contract Dex {
     {
         tokens[ticker] = Token(ticker, tokenAddress);
         tokenList.push(ticker);
+    }
+
+    // Registry: Get the list of tokens that can be traded
+    function getTokens() external view returns (Token[] memory) {
+        Token[] memory _tokens = new Token[](tokenList.length);
+        for (uint256 i = 0; i < tokenList.length; i++) {
+            _tokens[i] = Token(
+                tokens[tokenList[i]].ticker,
+                tokens[tokenList[i]].tokenAddress
+            );
+        }
+        return _tokens;
     }
 
     // Wallet: User to deposit token into the dex
@@ -78,7 +104,7 @@ contract Dex {
         IERC20(tokens[ticker].tokenAddress).transfer(msg.sender, amount);
     }
 
-    // Trading
+    // Trading: List of limit orders for a ticker and side
     function getOrders(bytes32 ticker, Side side)
         external
         view
@@ -93,8 +119,7 @@ contract Dex {
         uint256 amount,
         uint256 price,
         Side side
-    ) external tokenExist(ticker) {
-        require(ticker != DAI, "cannot trade DAI");
+    ) external tokenExist(ticker) tokenIsNotDai(ticker) {
         if (side == Side.SELL) {
             require(
                 traderBalances[msg.sender][ticker] >= amount,
@@ -127,6 +152,84 @@ contract Dex {
         }
 
         nextOrderId++;
+    }
+
+    // Trading
+    function createMarketOrder(
+        bytes32 ticker,
+        uint256 amount,
+        Side side
+    ) external tokenExist(ticker) tokenIsNotDai(ticker) {
+        if (side == Side.SELL) {
+            require(
+                traderBalances[msg.sender][ticker] >= amount,
+                "token balance too low"
+            );
+        }
+        Order[] storage orders = orderBook[ticker][uint256(
+            side == Side.BUY ? Side.SELL : Side.BUY
+        )];
+
+        // Fill market order with existing limit orders
+        uint256 i;
+        uint256 remaining = amount;
+        while (i < orders.length && remaining > 0) {
+            uint256 available = orders[i].amount - orders[i].filled;
+            uint256 matched = (remaining > available) ? available : remaining;
+            remaining -= matched;
+            orders[i].filled += matched;
+            emit NewTrade(
+                nextTradeId,
+                orders[i].id,
+                ticker,
+                orders[i].trader,
+                msg.sender,
+                matched,
+                orders[i].price,
+                now
+            );
+
+            if (side == Side.SELL) {
+                traderBalances[msg.sender][ticker] -= matched;
+                traderBalances[msg.sender][DAI] += matched * orders[i].price;
+
+                traderBalances[orders[i].trader][ticker] += matched;
+                traderBalances[orders[i].trader][DAI] -=
+                    matched *
+                    orders[i].price;
+            }
+            if (side == Side.BUY) {
+                require(
+                    traderBalances[msg.sender][DAI] >=
+                        matched * orders[i].price,
+                    "DAI balance too low"
+                );
+                traderBalances[msg.sender][ticker] += matched;
+                traderBalances[msg.sender][DAI] -= matched * orders[i].price;
+
+                traderBalances[orders[i].trader][ticker] -= matched;
+                traderBalances[orders[i].trader][DAI] +=
+                    matched *
+                    orders[i].price;
+            }
+            nextTradeId++;
+            i++;
+        }
+
+        // Prune order book of fully filled limit orders
+        i = 0;
+        while (i < orders.length && orders[i].filled == orders[i].amount) {
+            for (uint256 j = i; j < orders.length - 1; j++) {
+                orders[j] = orders[j + 1];
+            }
+            orders.pop();
+            i++;
+        }
+    }
+
+    modifier tokenIsNotDai(bytes32 ticker) {
+        require(ticker != DAI, "cannot trade DAI");
+        _;
     }
 
     modifier tokenExist(bytes32 ticker) {
