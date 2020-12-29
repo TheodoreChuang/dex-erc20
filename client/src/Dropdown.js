@@ -21,7 +21,7 @@ const Dropdown = ({ activeItem, items, onSelect }) => {
       </button>
       <div className={`dropdown-menu ${visible ? "visible" : ""}`}>
         {items?.map((item, i) => (
-          <a
+          <button
             className={`dropdown-item ${
               item.value === activeItem.value ? "active" : null
             }`}
@@ -30,7 +30,7 @@ const Dropdown = ({ activeItem, items, onSelect }) => {
             onClick={(e) => selectItem(e, item.value)}
           >
             {item.label}
-          </a>
+          </button>
         ))}
       </div>
     </div>
