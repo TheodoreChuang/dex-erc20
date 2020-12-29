@@ -1,0 +1,75 @@
+import Moment from "react-moment";
+import PropTypes from "prop-types";
+
+const MyOrders = ({ orders }) => {
+  const renderList = (orders, side, className) => {
+    return (
+      <>
+        <table className={`table table-striped mb-0 order-list ${className}`}>
+          <thead>
+            <tr className="table-title order-list-title">
+              <th colSpan="3">{side}</th>
+            </tr>
+            <tr>
+              <th>amount/filled</th>
+              <th>price</th>
+              <th>date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order.id}>
+                <td>
+                  {order.amount}/{order.filled}
+                </td>
+                <td>{order.price}</td>
+                <td>
+                  <Moment fromNow>{parseInt(order.date) * 1000}</Moment>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </>
+    );
+  };
+
+  return (
+    <div id="order-list" className="card">
+      <h2 className="card-title">My orders</h2>
+      <div className="row">
+        <div className="col-sm-6">
+          {renderList(orders.buy, "Buy", "order-list-buy")}
+        </div>
+        <div className="col-sm-6">
+          {renderList(orders.sell, "Sell", "order-list-sell")}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+MyOrders.propTypes = {
+  orders: PropTypes.shape({
+    buy: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.string,
+        amount: PropTypes.string,
+        filled: PropTypes.string,
+        price: PropTypes.string,
+        date: PropTypes.string, // timestamp in seconds
+      })
+    ),
+    sell: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.string,
+        amount: PropTypes.string,
+        filled: PropTypes.string,
+        price: PropTypes.string,
+        date: PropTypes.string, // timestamp in seconds
+      })
+    ),
+  }),
+};
+
+export default MyOrders;
