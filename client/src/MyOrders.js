@@ -52,22 +52,24 @@ const MyOrders = ({ orders }) => {
 MyOrders.propTypes = {
   orders: PropTypes.shape({
     buy: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string,
-        amount: PropTypes.string,
-        filled: PropTypes.string,
-        price: PropTypes.string,
-        date: PropTypes.string, // timestamp in seconds
-      })
+      PropTypes.arrayOf(
+        PropTypes.string
+        //   id: PropTypes.string,
+        //   amount: PropTypes.string,
+        //   filled: PropTypes.string,
+        //   price: PropTypes.string,
+        //   date: PropTypes.string, // timestamp in seconds
+      )
     ),
     sell: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string,
-        amount: PropTypes.string,
-        filled: PropTypes.string,
-        price: PropTypes.string,
-        date: PropTypes.string, // timestamp in seconds
-      })
+      PropTypes.arrayOf(
+        PropTypes.string
+        //   id: PropTypes.string,
+        //   amount: PropTypes.string,
+        //   filled: PropTypes.string,
+        //   price: PropTypes.string,
+        //   date: PropTypes.string, // timestamp in seconds
+      )
     ),
   }),
 };
